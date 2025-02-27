@@ -3,6 +3,7 @@ import requests
 from time import sleep
 from ..config import settings
 from ..models import Work, Funder
+import asyncio
 
 class OpenAlexService:
     def __init__(self):
@@ -23,8 +24,9 @@ class OpenAlexService:
             while papers_found < max_results and cursor:
                 params = {
                     "search": term.strip(),
-                    "per_page": min(50, max_results - papers_found),
-                    "cursor": cursor
+                    "per_page": min(25, max_results - papers_found),
+                    "cursor": cursor,
+                    "filter": "has_grants:true"
                 }
                 
                 try:
@@ -44,8 +46,11 @@ class OpenAlexService:
                         break
                         
                     for work in data["results"]:
+                        if papers_found >= max_results:
+                            return funders_data
+                        
                         grants = work.get("grants", [])
-                        if len(grants) > 0:  # Only process works that have grants
+                        if grants:  # Only process works that have grants
                             print(f"Found work with {len(grants)} grants: {work.get('title', '')}")  # Debug log
                             funders_data.append({
                                 "id": work.get("id"),
@@ -56,13 +61,10 @@ class OpenAlexService:
                                 "cited_by_count": work.get("cited_by_count", 0)
                             })
                             papers_found += 1
-                            
-                            if papers_found >= max_results:
-                                break
                     
                     cursor = data.get("meta", {}).get("next_cursor")
                     print(f"Next cursor: {cursor}")  # Debug log
-                    sleep(0.1)  # Rate limiting
+                    await asyncio.sleep(0.1)  # Rate limiting
                     
                 except Exception as e:
                     print(f"Error fetching data for term {term}: {e}")
