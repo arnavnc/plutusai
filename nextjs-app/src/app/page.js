@@ -3,6 +3,9 @@
 import { useState } from 'react';
 import { ProjectForm } from './components/ProjectForm';
 import { ResultsDisplay } from './components/ResultsDisplay';
+import { FaDiscord, FaSlack } from 'react-icons/fa';
+import Typewriter from 'typewriter-effect';
+import { features } from './data/features';
 
 export default function Home() {
   const [loading, setLoading] = useState(false);
@@ -38,17 +41,74 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8 text-black">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-center mb-8">
-          Research Funding Assistant
-        </h1>
-        <ProjectForm onSubmit={handleSubmit} disabled={loading} />
-        
-        {loading && <div>Loading...</div>}
-        {error && <div className="text-red-600 text-center mt-4">{error}</div>}
+    <div className="min-h-screen bg-black text-white">
+      {/* Hero Section */}
+      <div className="container mx-auto px-4 pt-20 pb-12">
+        <div className="px-10 py-10 border border-gray-800 bg-[#0A0A0A] hover:border-gray-700 transition-all cursor-pointer">
+          <div className="text-center mb-10">
+            <h1 className="text-5xl font-bold my-4 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 inline-block text-transparent bg-clip-text">
+              Plutus AI
+            </h1>
+            <div className="text-xl text-gray-400 flex mr-1 justify-center items-center gap-2">
+              {/* <span>With Plutus AI, you can</span> */}
+              <Typewriter
+                options={{
+                  strings: [
+                    'Discover untapped funding opportunities',
+                    'Match your research with ideal grants',
+                    'Accelerate your funding success rate',
+                    'Streamline your grant discovery process',
+                    'Identify strategic funding partners'
+                  ],
+                  autoStart: true,
+                  loop: true,
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Main Form */}
+          <div className="max-w-4xl mx-auto mb-10">
+            <ProjectForm onSubmit={handleSubmit} disabled={loading} />
+            <div className="flex justify-center gap-4 mt-4">
+              <button className="bg-opacity-40 bg-slate-900 w-full py-3 border border-gray-800 rounded-lg hover:border-gray-700 transition-all">
+                <FaDiscord size={20} className="inline-block mr-2 mb-0.5" /> Download Discord App
+              </button>
+              <button className="bg-opacity-40 bg-slate-900 w-full py-3 border border-gray-800 rounded-lg hover:border-gray-700 transition-all">
+                <FaSlack size={20} className="inline-block mr-2 mb-0.5" /> Download Slack App
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Feature Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 mx-auto">
+          {features.map((feature, index) => (
+            <FeatureCard
+              key={index}
+              title={feature.title}
+              description={feature.description}
+              icon={feature.icon}
+            />
+          ))}
+        </div>
+
+        {loading && <div className="text-center mt-8">Loading...</div>}
+        {error && <div className="text-red-600 text-center mt-8">{error}</div>}
         {results && <ResultsDisplay results={results} />}
       </div>
+    </div>
+  );
+}
+
+function FeatureCard({ title, description, icon: Icon }) {
+  return (
+    <div className="p-6 border border-gray-800 bg-[#0A0A0A] hover:border-gray-700 transition-all cursor-pointer">
+      <div className="text-4xl mb-4 text-indigo-500 mx-auto">
+        <Icon size={32} />
+      </div>
+      <h3 className="text-xl font-bold mb-2">{title}</h3>
+      <p className="text-gray-400">{description}</p>
     </div>
   );
 }
