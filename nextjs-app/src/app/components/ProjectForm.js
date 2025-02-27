@@ -2,41 +2,10 @@ import { useState } from 'react';
 
 export function ProjectForm({ onSubmit, disabled }) {
   const [description, setDescription] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [results, setResults] = useState([]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Submitting description:', description);
-    setLoading(true);
-    setError('');
-    try {
-      console.log('Making fetch request...');
-      const response = await fetch('http://localhost:8000/generate_funding_report', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          description,
-          max_results: 50
-        }),
-      });
-      console.log('Response received:', response);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch results');
-      }
-
-      const data = await response.json();
-      console.log('Parsed data:', data);
-      setResults(data);
-      onSubmit(description);
-    } catch (err) {
-      console.error('Error:', err);
-      setError('Failed to generate report. Please try again.');
-    }
+    onSubmit(description);
   };
 
   return (

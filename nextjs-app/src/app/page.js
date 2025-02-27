@@ -1,43 +1,105 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ProjectForm } from './components/ProjectForm';
 import { ResultsDisplay } from './components/ResultsDisplay';
+import { LoadingStates } from './components/LoadingStates';
 import { FaDiscord, FaSlack } from 'react-icons/fa';
 import Typewriter from 'typewriter-effect';
 import { features } from './data/features';
 
 export default function Home() {
   const [loading, setLoading] = useState(false);
+  const [loadingStates, setLoadingStates] = useState({
+    searchTerms: false,
+    paperSearch: {},
+    fundingData: false,
+    summary: false
+  });
+  const [searchTerms, setSearchTerms] = useState([]);
   const [results, setResults] = useState(null);
   const [error, setError] = useState('');
 
   const handleSubmit = async (description) => {
     setLoading(true);
     setError('');
-    try {
-      const response = await fetch('http://localhost:8000/generate_funding_report', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          description,
-          max_results: 50
-        }),
-      });
+    setResults(null);
+    setLoadingStates({
+      searchTerms: false,
+      paperSearch: {},
+      fundingData: false,
+      summary: false
+    });
+    
+    const eventSource = new EventSource(
+      `http://localhost:8000/generate_funding_report?description=${encodeURIComponent(description)}`
+    );
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch results');
+    eventSource.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      
+      if (data.error) {
+        setError(data.error);
+        eventSource.close();
+        setLoading(false);
+        return;
       }
+      
+      if (data.stage) {
+        switch (data.stage) {
+          case 'searchTerms':
+            if (data.status === 'completed') {
+              setSearchTerms(data.data);
+              setLoadingStates(prev => ({
+                ...prev,
+                searchTerms: true
+              }));
+            }
+            break;
+            
+          case 'paperSearch':
+            if (data.status === 'completed') {
+              setLoadingStates(prev => ({
+                ...prev,
+                paperSearch: {
+                  ...prev.paperSearch,
+                  [data.term]: true
+                }
+              }));
+            }
+            break;
+            
+          case 'fundingData':
+            if (data.status === 'completed') {
+              setLoadingStates(prev => ({
+                ...prev,
+                fundingData: true
+              }));
+            }
+            break;
+            
+          case 'summary':
+            if (data.status === 'completed') {
+              setLoadingStates(prev => ({
+                ...prev,
+                summary: true
+              }));
+            }
+            break;
+        }
+      } else {
+        setResults(data);
+        eventSource.close();
+        setLoading(false);
+      }
+    };
 
-      const data = await response.json();
-      setResults(data);
-    } catch (err) {
+    eventSource.onerror = (event) => {
+      console.error('EventSource error:', event);
+      eventSource.close();
       setError('Failed to generate report. Please try again.');
-    } finally {
       setLoading(false);
-    }
+    };
   };
 
   return (
@@ -74,12 +136,22 @@ export default function Home() {
               <button className="bg-opacity-40 bg-slate-900 w-full py-3 border border-gray-800 rounded-lg hover:border-gray-700 transition-all">
                 <FaDiscord size={20} className="inline-block mr-2 mb-0.5" /> Download Discord App
               </button>
-              <button className="bg-opacity-40 bg-slate-900 w-full py-3 border border-gray-800 rounded-lg hover:border-gray-700 transition-all">
-                <FaSlack size={20} className="inline-block mr-2 mb-0.5" /> Download Slack App
+              <button disabled={true} className="disabled:cursor-not-allowed bg-opacity-40 bg-slate-900 w-full py-3 border border-gray-800 rounded-lg hover:border-gray-700 transition-all">
+                <FaSlack size={20} className="inline-block mr-2 mb-0.5" /> Download Slack App (Coming Soon)
               </button>
             </div>
           </div>
         </div>
+
+        {loading && (
+          <LoadingStates 
+            states={loadingStates}
+            searchTerms={searchTerms}
+          />
+        )}
+        
+        {results && <ResultsDisplay results={results} />}
+        {error && <div className="text-red-600 text-center mt-8">{error}</div>}
 
         {/* Feature Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 mx-auto">
@@ -92,10 +164,6 @@ export default function Home() {
             />
           ))}
         </div>
-
-        {loading && <div className="text-center mt-8">Loading...</div>}
-        {error && <div className="text-red-600 text-center mt-8">{error}</div>}
-        {results && <ResultsDisplay results={results} />}
       </div>
     </div>
   );
