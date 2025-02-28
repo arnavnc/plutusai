@@ -112,9 +112,16 @@ export function ResultsDisplay({ results }) {
 }
 
 // Helper functions to parse the summary text
+function cleanMarkdown(text) {
+  return text
+    .replace(/\*\*/g, '')  // Remove bold markdown
+    .replace(/\*/g, '')    // Remove italic markdown
+    .replace(/`/g, '')     // Remove code markdown
+    .replace(/^-\s*/g, '') // Remove leading dash and space
+    .trim();
+}
+
 function extractTopFunders(summary) {
-  // This is a simplified example - you'll need to adjust the parsing logic
-  // based on your actual summary format
   const funders = [];
   const lines = summary.split('\n');
   let inFundersSection = false;
@@ -128,7 +135,7 @@ function extractTopFunders(summary) {
       break;
     }
     if (inFundersSection && line.trim().startsWith('-')) {
-      const [name, ...descParts] = line.replace('-', '').trim().split(':');
+      const [name, ...descParts] = cleanMarkdown(line).split(':');
       funders.push({
         name: name.trim(),
         description: descParts.join(':').trim()
@@ -139,7 +146,6 @@ function extractTopFunders(summary) {
 }
 
 function extractGrantPatterns(summary) {
-  // Similar parsing logic for grant patterns
   const patterns = [];
   const lines = summary.split('\n');
   let inPatternSection = false;
@@ -153,14 +159,13 @@ function extractGrantPatterns(summary) {
       break;
     }
     if (inPatternSection && line.trim().startsWith('-')) {
-      patterns.push(line.replace('-', '').trim());
+      patterns.push(cleanMarkdown(line));
     }
   }
   return patterns;
 }
 
 function extractRecommendations(summary) {
-  // Similar parsing logic for recommendations
   const recommendations = [];
   const lines = summary.split('\n');
   let inRecommendationsSection = false;
@@ -171,7 +176,7 @@ function extractRecommendations(summary) {
       continue;
     }
     if (inRecommendationsSection && line.trim().startsWith('-')) {
-      recommendations.push(line.replace('-', '').trim());
+      recommendations.push(cleanMarkdown(line));
     }
   }
   return recommendations;
