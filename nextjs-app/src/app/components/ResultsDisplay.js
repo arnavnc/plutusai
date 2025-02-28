@@ -1,61 +1,97 @@
 import ReactMarkdown from 'react-markdown';
+import { FaUniversity, FaChartLine, FaClipboardList, FaRegLightbulb } from 'react-icons/fa';
 
 export function ResultsDisplay({ results }) {
   return (
-    <div className="space-y-6 border border-gray-800 bg-[#0A0A0A] p-6">
-      <div className="flex flex-col gap-4 border-b border-gray-800 pb-4">
-        <h2 className="text-xl font-semibold mb-2 text-white">Your Results</h2>
-      </div>
-      <div>
-        <h2 className="text-xl font-semibold mb-2 text-white">Search Terms Used</h2>
+    <div className="space-y-8 border border-gray-800 bg-[#0A0A0A] p-6">
+      {/* Search Terms Section */}
+      <div className="pb-6 border-b border-gray-800">
+        <h2 className="text-xl font-semibold mb-3 text-white flex items-center gap-2">
+          <FaRegLightbulb className="text-indigo-400" />
+          Search Terms
+        </h2>
         <div className="flex flex-wrap gap-2">
           {results.search_terms.map((term, index) => (
-            <span key={index} className="px-3 py-1 bg-opacity-40 bg-slate-900 border border-gray-800 rounded-full text-gray-300 text-sm">
+            <span key={index} className="px-3 py-1 bg-opacity-40 bg-indigo-900 border border-indigo-800 rounded-full text-indigo-200 text-sm">
               {term}
             </span>
           ))}
         </div>
       </div>
 
-      <div>
-        <h2 className="text-xl font-semibold mb-2 text-white">Funding Summary</h2>
-        <div className="prose prose-invert max-w-none text-gray-300">
-          <ReactMarkdown>{results.summary}</ReactMarkdown>
+      {/* Key Findings Section */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Top Funders Section */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+            <FaUniversity className="text-indigo-400" />
+            Top Funding Organizations
+          </h3>
+          <div className="space-y-3">
+            {extractTopFunders(results.summary).map((funder, index) => (
+              <div key={index} className="p-3 border border-gray-800 rounded-lg hover:border-gray-700 transition-all">
+                <h4 className="font-medium text-white">{funder.name}</h4>
+                <p className="text-sm text-gray-400">{funder.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Grant Patterns Section */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+            <FaChartLine className="text-indigo-400" />
+            Typical Grant Patterns
+          </h3>
+          <div className="space-y-3">
+            {extractGrantPatterns(results.summary).map((pattern, index) => (
+              <div key={index} className="p-3 border border-gray-800 rounded-lg hover:border-gray-700 transition-all">
+                <span className="text-white">{pattern}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div>
-        <h2 className="text-xl font-semibold mb-4 text-white">Funding Opportunities</h2>
-        <div className="grid lg:grid-cols-2">
+      {/* Strategic Recommendations */}
+      <div className="pt-6 border-t border-gray-800">
+        <h3 className="text-lg font-semibold mb-4 text-white flex items-center gap-2">
+          <FaClipboardList className="text-indigo-400" />
+          Strategic Recommendations
+        </h3>
+        <div className="grid md:grid-cols-2 gap-4">
+          {extractRecommendations(results.summary).map((rec, index) => (
+            <div key={index} className="p-4 bg-opacity-40 bg-slate-900 rounded-lg border border-gray-800">
+              <p className="text-gray-300">{rec}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Recent Funding Examples */}
+      <div className="pt-6 border-t border-gray-800">
+        <h3 className="text-lg font-semibold mb-4 text-white">Recent Funding Examples</h3>
+        <div className="grid md:grid-cols-2 gap-4">
           {results.funders_data.map((funder, index) => (
-            <div key={index} className="max-h-48 overflow-clip overflow-y-scroll scroll-y-auto border border-gray-800 bg-opacity-40 bg-slate-900 p-4 hover:border-gray-700 transition-all">
-              <h3 className="font-medium text-white text-lg mb-2">{funder.title}</h3>
-              <div className="grid grid-cols-2 gap-4 mb-3">
-                <div className="flex items-center space-x-2">
-                  <span className="text-gray-500">Year:</span>
-                  <span className="text-gray-300">{funder.publication_year}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="text-gray-500">Citations:</span>
-                  <span className="text-gray-300">{funder.cited_by_count}</span>
-                </div>
+            <div key={index} className="p-4 border border-gray-800 rounded-lg hover:border-gray-700 transition-all">
+              <h4 className="font-medium text-white text-lg mb-2">{funder.title}</h4>
+              <div className="flex items-center gap-4 mb-3 text-sm">
+                <span className="text-gray-400">Year: {funder.publication_year}</span>
+                <span className="text-gray-400">Citations: {funder.cited_by_count}</span>
               </div>
-              <div className="mt-3">
-                <p className="text-gray-300 font-medium mb-2">Grants:</p>
-                <div className="space-y-2">
-                  {funder.grants.map((grant, gIndex) => (
-                    <div key={gIndex} className="flex flex-col space-y-1 p-2 bg-black bg-opacity-50 rounded">
-                      <span className="text-indigo-400 font-medium">
-                        {grant.funder_display_name}
+              <div className="space-y-2">
+                {funder.grants.map((grant, gIndex) => (
+                  <div key={gIndex} className="p-2 bg-black bg-opacity-50 rounded">
+                    <span className="text-indigo-400 font-medium block">
+                      {grant.funder_display_name}
+                    </span>
+                    {grant.award_id && (
+                      <span className="text-gray-500 text-sm">
+                        Grant ID: {grant.award_id}
                       </span>
-                      {grant.award_id && (
-                        <span className="text-gray-400 text-sm">
-                          Grant ID: {grant.award_id}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                    )}
+                  </div>
+                ))}
               </div>
               {funder.doi && (
                 <a 
@@ -73,4 +109,70 @@ export function ResultsDisplay({ results }) {
       </div>
     </div>
   );
+}
+
+// Helper functions to parse the summary text
+function extractTopFunders(summary) {
+  // This is a simplified example - you'll need to adjust the parsing logic
+  // based on your actual summary format
+  const funders = [];
+  const lines = summary.split('\n');
+  let inFundersSection = false;
+
+  for (const line of lines) {
+    if (line.includes('Top Funding Organizations')) {
+      inFundersSection = true;
+      continue;
+    }
+    if (inFundersSection && line.startsWith('2.')) {
+      break;
+    }
+    if (inFundersSection && line.trim().startsWith('-')) {
+      const [name, ...descParts] = line.replace('-', '').trim().split(':');
+      funders.push({
+        name: name.trim(),
+        description: descParts.join(':').trim()
+      });
+    }
+  }
+  return funders;
+}
+
+function extractGrantPatterns(summary) {
+  // Similar parsing logic for grant patterns
+  const patterns = [];
+  const lines = summary.split('\n');
+  let inPatternSection = false;
+
+  for (const line of lines) {
+    if (line.includes('Typical Grant Sizes')) {
+      inPatternSection = true;
+      continue;
+    }
+    if (inPatternSection && line.startsWith('3.')) {
+      break;
+    }
+    if (inPatternSection && line.trim().startsWith('-')) {
+      patterns.push(line.replace('-', '').trim());
+    }
+  }
+  return patterns;
+}
+
+function extractRecommendations(summary) {
+  // Similar parsing logic for recommendations
+  const recommendations = [];
+  const lines = summary.split('\n');
+  let inRecommendationsSection = false;
+
+  for (const line of lines) {
+    if (line.includes('Specific Recommendations')) {
+      inRecommendationsSection = true;
+      continue;
+    }
+    if (inRecommendationsSection && line.trim().startsWith('-')) {
+      recommendations.push(line.replace('-', '').trim());
+    }
+  }
+  return recommendations;
 }
