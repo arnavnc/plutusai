@@ -93,9 +93,9 @@ export function ResultsDisplay({ results }) {
                   </div>
                 ))}
               </div>
-              {funder.doi && (
+              {funder.id && (
                 <a 
-                  href={funder.doi}
+                  href={funder.id.replace('openalex.org', 'scilynk.com/paper')}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-block mt-3 text-sm text-indigo-400 hover:text-indigo-300 transition-colors"

@@ -30,7 +30,7 @@ class OpenAlexService:
                 while papers_found < max_results and cursor and empty_page_count < max_empty_pages:
                     params = {
                         "search": term.strip(),
-                        "per_page": 50,  # Increased since we need to filter post-request
+                        "per_page": 50,
                         "cursor": cursor
                     }
                     
@@ -56,8 +56,7 @@ class OpenAlexService:
                             if grants and len(grants) > 0:  # Check if grants array exists and is not empty
                                 print(f"Found work with {len(grants)} grants: {work.get('title', '')}")  # Debug log
                                 funders_data.append({
-                                    "id": work.get("id"),
-                                    "doi": work.get("doi"),
+                                    "id": f"https://openalex.org/{work.get('id')}",  # Changed to full URL
                                     "title": work.get("title"),
                                     "publication_year": work.get("publication_year"),
                                     "grants": grants,
