@@ -3,6 +3,7 @@ import requests
 from time import sleep
 from ..config import settings
 from ..models import Work, Funder
+import httpx
 import asyncio
 
 class OpenAlexService:
@@ -16,61 +17,74 @@ class OpenAlexService:
         
         print(f"Starting search with terms: {search_terms}")  # Debug log
         
-        for term in search_terms:
-            if papers_found >= max_results:
-                break
-                
-            cursor = "*"
-            while papers_found < max_results and cursor:
-                params = {
-                    "search": term.strip(),
-                    "per_page": min(25, max_results - papers_found),
-                    "cursor": cursor,
-                    "filter": "has_grants:true"
-                }
-                
-                try:
-                    print(f"Making request for term: {term.strip()}")  # Debug log
-                    response = requests.get(
-                        f"{self.base_url}/works",
-                        params=params,
-                        headers=self.headers
-                    )
-                    response.raise_for_status()
-                    data = response.json()
-                    
-                    print(f"Got response with {len(data.get('results', []))} results")  # Debug log
-                    
-                    if not data.get("results"):
-                        print(f"No results found for term: {term}")  # Debug log
-                        break
-                        
-                    for work in data["results"]:
-                        if papers_found >= max_results:
-                            return funders_data
-                        
-                        grants = work.get("grants", [])
-                        if grants:  # Only process works that have grants
-                            print(f"Found work with {len(grants)} grants: {work.get('title', '')}")  # Debug log
-                            funders_data.append({
-                                "id": work.get("id"),
-                                "doi": work.get("doi"),
-                                "title": work.get("title"),
-                                "publication_year": work.get("publication_year"),
-                                "grants": grants,
-                                "cited_by_count": work.get("cited_by_count", 0)
-                            })
-                            papers_found += 1
-                    
-                    cursor = data.get("meta", {}).get("next_cursor")
-                    print(f"Next cursor: {cursor}")  # Debug log
-                    await asyncio.sleep(0.1)  # Rate limiting
-                    
-                except Exception as e:
-                    print(f"Error fetching data for term {term}: {e}")
-                    print(f"Full error details: {str(e)}")  # More detailed error logging
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            for term in search_terms:
+                if papers_found >= max_results:
                     break
                     
+                cursor = "*"
+                papers_for_term = 0
+                max_empty_pages = 3
+                empty_page_count = 0
+                
+                while papers_found < max_results and cursor and empty_page_count < max_empty_pages:
+                    params = {
+                        "search": term.strip(),
+                        "per_page": 50,  # Increased since we need to filter post-request
+                        "cursor": cursor
+                    }
+                    
+                    try:
+                        response = await client.get(
+                            f"{self.base_url}/works",
+                            params=params,
+                            headers=self.headers
+                        )
+                        response.raise_for_status()
+                        data = response.json()
+                        
+                        results = data.get("results", [])
+                        print(f"Got response with {len(results)} results")  # Debug log
+                        
+                        if not results:
+                            empty_page_count += 1
+                            break
+                            
+                        papers_with_grants = 0
+                        for work in results:
+                            grants = work.get("grants", [])
+                            if grants and len(grants) > 0:  # Check if grants array exists and is not empty
+                                print(f"Found work with {len(grants)} grants: {work.get('title', '')}")  # Debug log
+                                funders_data.append({
+                                    "id": work.get("id"),
+                                    "doi": work.get("doi"),
+                                    "title": work.get("title"),
+                                    "publication_year": work.get("publication_year"),
+                                    "grants": grants,
+                                    "cited_by_count": work.get("cited_by_count", 0)
+                                })
+                                papers_found += 1
+                                papers_for_term += 1
+                                papers_with_grants += 1
+                                
+                                if papers_found >= max_results:
+                                    break
+                        
+                        if papers_with_grants == 0:
+                            empty_page_count += 1
+                        else:
+                            empty_page_count = 0  # Reset counter if we found papers with grants
+                        
+                        cursor = data.get("meta", {}).get("next_cursor")
+                        print(f"Next cursor: {cursor}")  # Debug log
+                        await asyncio.sleep(0.1)  # Rate limiting
+                        
+                    except Exception as e:
+                        print(f"Error fetching data for term {term}: {e}")
+                        break
+                
+                print(f"Found {papers_for_term} papers with grants for term: {term}")  # Debug log
+                        
         print(f"Search complete. Found {len(funders_data)} papers with grants")  # Debug log
         return funders_data
 
