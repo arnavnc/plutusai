@@ -31,75 +31,108 @@ export default function Home() {
       summary: false
     });
     
-    const eventSource = new EventSource(
-      `http://localhost:8000/generate_funding_report?description=${encodeURIComponent(description)}`
-    );
-
-    eventSource.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      
-      if (data.error) {
-        setError(data.error);
-        eventSource.close();
-        setLoading(false);
-        return;
-      }
-      
-      if (data.stage) {
-        switch (data.stage) {
-          case 'searchTerms':
-            if (data.status === 'completed') {
-              setSearchTerms(data.data);
-              setLoadingStates(prev => ({
-                ...prev,
-                searchTerms: true
-              }));
-            }
-            break;
-            
-          case 'paperSearch':
-            if (data.status === 'completed') {
-              setLoadingStates(prev => ({
-                ...prev,
-                paperSearch: {
-                  ...prev.paperSearch,
-                  [data.term]: true
-                }
-              }));
-            }
-            break;
-            
-          case 'fundingData':
-            if (data.status === 'completed') {
-              setLoadingStates(prev => ({
-                ...prev,
-                fundingData: true
-              }));
-            }
-            break;
-            
-          case 'summary':
-            if (data.status === 'completed') {
-              setLoadingStates(prev => ({
-                ...prev,
-                summary: true
-              }));
-            }
-            break;
+    try {
+      const eventSource = new EventSource(
+        `http://localhost:8000/generate_funding_report?description=${encodeURIComponent(description)}`,
+        {
+          withCredentials: true,
         }
-      } else {
-        setResults(data);
-        eventSource.close();
-        setLoading(false);
-      }
-    };
+      );
 
-    eventSource.onerror = (event) => {
-      console.error('EventSource error:', event);
-      eventSource.close();
-      setError('Failed to generate report. Please try again.');
+      eventSource.addEventListener('open', (event) => {
+        console.log('Connection opened');
+      });
+
+      eventSource.addEventListener('message', (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log("Received SSE data:", data);
+          
+          if (data.error) {
+            console.error("SSE error:", data.error);
+            setError(data.error);
+            eventSource.close();
+            setLoading(false);
+            return;
+          }
+          
+          if (data.stage) {
+            switch (data.stage) {
+              case 'searchTerms':
+                if (data.status === 'completed') {
+                  setSearchTerms(data.data);
+                  setLoadingStates(prev => ({
+                    ...prev,
+                    searchTerms: true
+                  }));
+                }
+                break;
+                
+              case 'paperSearch':
+                if (data.status === 'completed') {
+                  setLoadingStates(prev => ({
+                    ...prev,
+                    paperSearch: {
+                      ...prev.paperSearch,
+                      [data.term]: true
+                    }
+                  }));
+                }
+                break;
+                
+              case 'fundingData':
+                if (data.status === 'completed') {
+                  setLoadingStates(prev => ({
+                    ...prev,
+                    fundingData: true
+                  }));
+                }
+                break;
+                
+              case 'summary':
+                if (data.status === 'completed') {
+                  setLoadingStates(prev => ({
+                    ...prev,
+                    summary: true
+                  }));
+                }
+                break;
+            }
+          } else {
+            setResults(data);
+            eventSource.close();
+            setLoading(false);
+          }
+        } catch (e) {
+          console.error('Error parsing SSE data:', e);
+          setError('Error processing server response');
+          eventSource.close();
+          setLoading(false);
+        }
+      });
+
+      eventSource.addEventListener('error', (event) => {
+        console.error('EventSource error:', event);
+        if (event.target.readyState === EventSource.CLOSED) {
+          console.log('Connection was closed');
+        }
+        eventSource.close();
+        setError('Failed to generate report. Please try again.');
+        setLoading(false);
+      });
+
+      // Add cleanup on component unmount
+      return () => {
+        if (eventSource) {
+          console.log('Closing connection');
+          eventSource.close();
+        }
+      };
+    } catch (error) {
+      console.error('Error setting up EventSource:', error);
+      setError('Failed to connect to server');
       setLoading(false);
-    };
+    }
   };
 
   return (
