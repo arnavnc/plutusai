@@ -16,10 +16,11 @@ app = FastAPI()
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure this appropriately for production
+    allow_origins=["http://localhost:3000"],  # Be specific about allowed origin
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Type", "text/event-stream"]  # Explicitly expose SSE headers
 )
 
 @app.get("/generate_funding_report")
@@ -30,22 +31,25 @@ async def generate_funding_report(description: str = Query(...)):
             print("Starting search terms generation...")  # Debug log
             await asyncio.sleep(0.1)
             yield {
-                "event": "status",
+                "event": "message",
                 "data": json.dumps({"stage": "searchTerms", "status": "started"})
             }
             
             try:
                 search_terms = await openai_service.extract_search_terms(description)
-                # Limit to top 3 search terms
                 search_terms = search_terms[:3]
-                print(f"Generated search terms: {search_terms}")  # Debug log
+                print(f"Generated search terms: {search_terms}")
             except Exception as e:
                 print(f"Error in extract_search_terms: {str(e)}")
                 print(traceback.format_exc())
-                raise
+                yield {
+                    "event": "message",
+                    "data": json.dumps({"error": f"Search terms error: {str(e)}"})
+                }
+                return
 
             yield {
-                "event": "status",
+                "event": "message",
                 "data": json.dumps({
                     "stage": "searchTerms",
                     "status": "completed",
@@ -60,7 +64,7 @@ async def generate_funding_report(description: str = Query(...)):
             for term in search_terms:
                 print(f"Searching papers for term: {term}")  # Debug log
                 try:
-                    term_papers = await openalex_service.search_for_grants([term], 10)  # Reduced max_results for testing
+                    term_papers = await openalex_service.search_for_grants([term], 15)  # Reduced max_results for testing
                     funders_data.extend(term_papers)
                     papers_found += len(term_papers)
                     print(f"Found {len(term_papers)} papers for term: {term}")  # Debug log
@@ -70,7 +74,7 @@ async def generate_funding_report(description: str = Query(...)):
                     raise
 
                 yield {
-                    "event": "status",
+                    "event": "message",
                     "data": json.dumps({
                         "stage": "paperSearch",
                         "status": "completed",
@@ -89,7 +93,7 @@ async def generate_funding_report(description: str = Query(...)):
                 raise
 
             yield {
-                "event": "status",
+                "event": "message",
                 "data": json.dumps({
                     "stage": "fundingData",
                     "status": "completed"
@@ -106,7 +110,7 @@ async def generate_funding_report(description: str = Query(...)):
                 raise
 
             yield {
-                "event": "status",
+                "event": "message",
                 "data": json.dumps({
                     "stage": "summary",
                     "status": "completed"
@@ -120,17 +124,18 @@ async def generate_funding_report(description: str = Query(...)):
                 "summary": summary
             }
             
-            print("Sending final results...")  # Debug log
+            print("Sending final results...")
             yield {
-                "event": "result",
+                "event": "message",
                 "data": json.dumps(result)
             }
+            print("Results sent successfully")  # Add debug log
 
         except Exception as e:
             print(f"Error in event_generator: {str(e)}")
             print(traceback.format_exc())
             yield {
-                "event": "error",
+                "event": "message",
                 "data": json.dumps({"error": str(e)})
             }
 
