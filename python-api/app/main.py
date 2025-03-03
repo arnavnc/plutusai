@@ -5,11 +5,17 @@ from sse_starlette.sse import EventSourceResponse
 import json
 import asyncio
 import traceback
+import logging
 
 from .models import ProjectDescription
 from .services.cache import cache_service
 from .services.openai_service import openai_service
 from .services.openalex import openalex_service
+from .services.discord_service import discord_service
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -22,6 +28,36 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["Content-Type", "text/event-stream"]  # Explicitly expose SSE headers
 )
+
+@app.on_event("startup")
+async def startup_event():
+    """Start the Discord bot when the FastAPI application starts"""
+    logger.info("Starting Discord bot...")
+    try:
+        await discord_service.start_bot()
+        logger.info("Discord bot started successfully!")
+    except Exception as e:
+        logger.error(f"Failed to start Discord bot: {e}")
+        logger.error(traceback.format_exc())
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Stop the Discord bot when the FastAPI application shuts down"""
+    logger.info("Stopping Discord bot...")
+    try:
+        await discord_service.stop_bot()
+        logger.info("Discord bot stopped successfully!")
+    except Exception as e:
+        logger.error(f"Failed to stop Discord bot: {e}")
+
+@app.post("/discord/send")
+async def send_discord_message(message: str = Query(...)):
+    """Send a message to the configured Discord channel"""
+    try:
+        await discord_service.send_message(message)
+        return {"status": "success", "message": "Message sent to Discord"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/generate_funding_report")
 async def generate_funding_report(description: str = Query(...)):

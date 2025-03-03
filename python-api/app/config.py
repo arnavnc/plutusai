@@ -6,6 +6,10 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379"
     cache_ttl: int = 3600  # 1 hour in seconds
     contact_email: str  # Add this for OpenAlex API polite pool
+    discord_bot_token: str
+    discord_guild_id: str
+    discord_channel_id: str
+    discord_client_id: str  # Application ID from Discord Developer Portal
 
     class Config:
         env_file = ".env"
