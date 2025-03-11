@@ -100,7 +100,7 @@ async def generate_funding_report(description: str = Query(...)):
             for term in search_terms:
                 print(f"Searching papers for term: {term}")  # Debug log
                 try:
-                    term_papers = await openalex_service.search_for_grants([term], 15)  # Reduced max_results for testing
+                    term_papers = await openalex_service.search_for_grants([term], 10)  # Reduced max_results for testing
                     funders_data.extend(term_papers)
                     papers_found += len(term_papers)
                     print(f"Found {len(term_papers)} papers for term: {term}")  # Debug log

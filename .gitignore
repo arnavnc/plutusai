@@ -2,3 +2,9 @@
 /python-api/venv
 /python-api/venv
 /python-api/venv
+/node_modules
+*.pyc
+*.pyc
+/python-api/app/__pycache__
+/python-api/venv
+/python-api/venv

@@ -99,40 +99,133 @@ class OpenAIService:
         Funding Data Analysis:
         {formatted_data}
         
-        Please provide a structured analysis in the following format:
+        Provide a structured analysis following EXACTLY this format, maintaining the exact section headers:
 
         1. Top Funding Organizations Most Relevant to This Project
-        - [Organization Name]: [Brief description of relevance and funding history]
-        (List 3-5 most relevant organizations)
+        [List 3-5 most relevant organizations with brief descriptions]
+        - Each organization should be described in 2-3 sentences
+        - Focus on their relevance to the project and funding history
+        - Include specific details about their funding interests
 
         2. Typical Grant Sizes or Patterns
-        - [Grant type/organization]: [Size range and key characteristics]
-        (List 2-4 typical patterns)
+        [List 2-4 typical patterns]
+        - Include specific dollar/currency amounts when available
+        - Mention typical duration and funding cycles
+        - Note any special requirements or preferences
 
         3. Specific Recommendations for Approaching These Funders
-        - [Clear, actionable recommendation]
-        (List 4-6 specific recommendations)
+        [List 4-6 specific recommendations]
+        - Each recommendation should be actionable and specific
+        - Include timing considerations
+        - Focus on concrete steps rather than general advice
 
         4. Strategic Next Steps for Grant Applications
-        - [Specific action item]
-        (List 3-4 next steps)
+        [List 3-4 next steps]
+        - Each step should be immediately actionable
+        - Include specific timeframes when possible
+        - Focus on preparation and positioning
 
-        Focus on actionable insights and concrete next steps. Be specific about grant sizes and requirements when that information is available.
+        Important:
+        - Keep sections clearly separated
+        - Use bullet points consistently
+        - Be specific and quantitative where possible
+        - Focus on actionable insights
+        - Avoid repeating information between sections
         """
         
         try:
             response = await self.client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": "You are a research funding expert. Analyze funding patterns and provide strategic advice for grant acquisition. Be specific and actionable in your recommendations."},
+                    {"role": "system", "content": "You are a research funding expert. Provide clear, structured, and non-repetitive advice for grant acquisition. Focus on specific, actionable recommendations and clear organization of information."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.2,  # Lowered temperature for more consistent, structured output
+                temperature=0.1,  # Lower temperature for more structured output
                 max_tokens=1000
             )
             return response.choices[0].message.content
         except Exception as e:
             print(f"Error generating summary: {e}")
+            raise
+
+    async def answer_question(self, question: str, search_description: str, funders_data: list, enriched_data: list, conversation_history: list = None, paper_details: dict = None) -> str:
+        """Uses OpenAI to answer questions about the search results and specific papers."""
+        formatted_data = await self.format_funders_data_for_summary(funders_data)
+        
+        # Format paper details for the prompt
+        papers_context = ""
+        if paper_details:
+            papers_context = "\nDetailed Paper Information:\n"
+            for title, paper in paper_details.items():
+                papers_context += f"\nTitle: {paper['title']}"
+                papers_context += f"\nYear: {paper['year']}"
+                papers_context += f"\nCitations: {paper['citations']}"
+                if paper['abstract']:
+                    papers_context += f"\nAbstract: {paper['abstract']}"
+                papers_context += "\nFunders:"
+                for funder in paper['funders']:
+                    papers_context += f"\n- {funder['name']}"
+                    if funder['grant_id']:
+                        papers_context += f" (Grant ID: {funder['grant_id']})"
+                papers_context += "\n"
+        
+        # Build conversation context
+        conversation_context = ""
+        if conversation_history and len(conversation_history) > 2:  # Include context if there's more than the current exchange
+            conversation_context = "\nPrevious Conversation:\n"
+            # Include last 3 exchanges (6 messages) before the current one
+            for msg in conversation_history[-7:-2]:  # Exclude current exchange
+                role = "User" if msg["role"] == "user" else "Assistant"
+                conversation_context += f"\n{role}: {msg['content']}\n"
+        
+        prompt = f"""
+        Original Project Description: {search_description}
+        
+        User Question: {question}
+        
+        Funding Data Analysis:
+        {formatted_data}{papers_context}{conversation_context}
+        
+        Please provide a detailed answer to the user's question based on the available data.
+        If the question is about a specific paper, focus on that paper's details and its funding information.
+        If it's a follow-up question, consider the context from previous exchanges.
+        
+        Guidelines for your response:
+        - Be direct and specific in addressing the question
+        - Use concrete examples from the funding data and paper details
+        - Include relevant numbers, amounts, or statistics when available
+        - Structure your response in a clear, easy-to-read format
+        - If the question is about a specific paper:
+          * Provide detailed information about that paper's funding sources
+          * Explain the significance of the research
+          * Highlight any unique aspects of the funding arrangement
+        - If it's a follow-up question:
+          * Maintain consistency with previous answers
+          * Build upon previously provided information
+          * Clarify any points from previous exchanges if needed
+        - If the question cannot be fully answered with the available data, acknowledge this and provide the best possible answer
+        - Keep your response focused and concise while being comprehensive
+        
+        Important:
+        - Only make claims that are supported by the data provided
+        - Use bullet points or sections if it helps organize the information
+        - Highlight key insights or recommendations
+        - If suggesting next steps, make them specific and actionable
+        """
+        
+        try:
+            response = await self.client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "You are a research funding expert specializing in analyzing grant opportunities and providing strategic advice. Your responses should be clear, specific, and grounded in the data provided. You can discuss specific papers in detail and maintain context across a conversation."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.1,  # Lower temperature for more focused responses
+                max_tokens=1000
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            print(f"Error answering question: {e}")
             raise
 
 openai_service = OpenAIService() 
