@@ -32,104 +32,36 @@ export default function Home() {
     });
     
     try {
-      const eventSource = new EventSource(
-        `https://plutusai-api.onrender.com/generate_funding_report?description=${encodeURIComponent(description)}`,
+      const response = await fetch(
+        'https://plutusai-api.onrender.com/generate_funding_report',
         {
-          withCredentials: true,
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ description }),
+          credentials: 'include',
         }
       );
 
-      eventSource.addEventListener('open', (event) => {
-        console.log('Connection opened');
-      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-      eventSource.addEventListener('message', (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          console.log("Received SSE data:", data);
-          
-          if (data.error) {
-            console.error("SSE error:", data.error);
-            setError(data.error);
-            eventSource.close();
-            setLoading(false);
-            return;
-          }
-          
-          if (data.stage) {
-            switch (data.stage) {
-              case 'searchTerms':
-                if (data.status === 'completed') {
-                  setSearchTerms(data.data);
-                  setLoadingStates(prev => ({
-                    ...prev,
-                    searchTerms: true
-                  }));
-                }
-                break;
-                
-              case 'paperSearch':
-                if (data.status === 'completed') {
-                  setLoadingStates(prev => ({
-                    ...prev,
-                    paperSearch: {
-                      ...prev.paperSearch,
-                      [data.term]: true
-                    }
-                  }));
-                }
-                break;
-                
-              case 'fundingData':
-                if (data.status === 'completed') {
-                  setLoadingStates(prev => ({
-                    ...prev,
-                    fundingData: true
-                  }));
-                }
-                break;
-                
-              case 'summary':
-                if (data.status === 'completed') {
-                  setLoadingStates(prev => ({
-                    ...prev,
-                    summary: true
-                  }));
-                }
-                break;
-            }
-          } else {
-            setResults(data);
-            eventSource.close();
-            setLoading(false);
-          }
-        } catch (e) {
-          console.error('Error parsing SSE data:', e);
-          setError('Error processing server response');
-          eventSource.close();
-          setLoading(false);
-        }
-      });
-
-      eventSource.addEventListener('error', (event) => {
-        console.error('EventSource error:', event);
-        if (event.target.readyState === EventSource.CLOSED) {
-          console.log('Connection was closed');
-        }
-        eventSource.close();
-        setError('Failed to generate report. Please try again.');
+      const data = await response.json();
+      console.log("Received data:", data);
+      
+      if (data.error) {
+        console.error("API error:", data.error);
+        setError(data.error);
         setLoading(false);
-      });
+        return;
+      }
 
-      // Add cleanup on component unmount
-      return () => {
-        if (eventSource) {
-          console.log('Closing connection');
-          eventSource.close();
-        }
-      };
+      setResults(data);
+      setLoading(false);
     } catch (error) {
-      console.error('Error setting up EventSource:', error);
+      console.error('Error setting up fetch:', error);
       setError('Failed to connect to server');
       setLoading(false);
     }
