@@ -5,6 +5,7 @@ export default {
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
+  darkMode: 'media',
   theme: {
     extend: {
       colors: {
@@ -12,15 +13,15 @@ export default {
         foreground: "var(--foreground)",
       },
       fontFamily: {
-        sans: ['var(--font-montserrat)'],
+        sans: ['var(--font-montserrat)', 'system-ui', 'sans-serif'],
       },
       animation: {
         'border': 'border 4s linear infinite',
       },
       keyframes: {
-          'border': {
-              to: { '--border-angle': '360deg' },
-          }
+        'border': {
+          to: { '--border-angle': '360deg' },
+        }
       }   
     },
   },
