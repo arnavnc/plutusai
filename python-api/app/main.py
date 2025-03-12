@@ -8,7 +8,6 @@ import traceback
 import logging
 
 from .models import ProjectDescription
-from .services.cache import cache_service
 from .services.openai_service import openai_service
 from .services.openalex import openalex_service
 from .services.discord_service import discord_service
