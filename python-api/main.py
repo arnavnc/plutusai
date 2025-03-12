@@ -7,14 +7,51 @@ import openai
 from time import sleep
 import redis
 import json
+import os
 
-app = FastAPI()
+app = FastAPI(
+    title="PlutusAI API",
+    description="API for PlutusAI Research Funding Assistant",
+    version="1.0.0"
+)
 
-# OpenAI and OpenAlex API keys (Replace with actual keys)
-OPENAI_API_KEY = "your-openai-key"
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
+
+# OpenAI and OpenAlex configuration
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENALEX_API_URL = "https://api.openalex.org/works"
 
 openai.api_key = OPENAI_API_KEY
+
+# Redis configuration
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+redis_client = redis.from_url(REDIS_URL)
+
+@app.get("/")
+async def root():
+    """Root endpoint to verify API is running"""
+    return {
+        "status": "online",
+        "message": "PlutusAI API is running",
+        "version": "1.0.0",
+        "endpoints": [
+            "/search",
+            "/ask",
+            "/generate_funding_report"
+        ]
+    }
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {"status": "healthy"}
 
 class ProjectDescription(BaseModel):
     description: str

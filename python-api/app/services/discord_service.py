@@ -9,40 +9,46 @@ import logging
 import sys
 import json
 from textwrap import wrap
+import os
 
 logger = logging.getLogger(__name__)
 
+# Get the API URL from environment variable or default to localhost
+API_URL = os.getenv('API_URL', 'http://localhost:8000')
+
 class DiscordBot(commands.Bot):
     def __init__(self):
-        # Set up intents with all the permissions we need
         intents = discord.Intents.default()
         intents.message_content = True
         intents.members = True
         intents.guilds = True
         
-        # Permission integer: READ_MESSAGES (1 << 10) | SEND_MESSAGES (1 << 11) | 
-        # READ_MESSAGE_HISTORY (1 << 16) | USE_APPLICATION_COMMANDS (1 << 31)
-        permissions = 274878221312
+        # Permission integer for basic bot functionality
+        permissions = discord.Permissions(
+            send_messages=True,
+            read_messages=True,
+            read_message_history=True,
+            view_channel=True,
+            use_application_commands=True
+        )
 
         super().__init__(
             command_prefix="!",
             intents=intents,
             application_id=settings.discord_client_id
         )
-        self.message_callback: Optional[Callable[[str], None]] = None
-        # Store search context for each channel
+        
+        # Store search context per channel instead of globally
         self.search_contexts = {}
-        # Store conversation history for each channel
         self.conversation_history = {}
-        # Store paper details for quick reference
         self.paper_details = {}
-        # Store last active timestamp for each channel
         self.last_active = {}
+        self.api_url = API_URL
 
     async def setup_hook(self):
-        logger.info("Bot is setting up...")
+        logger.info(f"Bot is setting up... API URL: {self.api_url}")
         
-        # Remove default help command before adding our custom one
+        # Remove default help command
         self.remove_command('help')
 
         # Add commands
@@ -392,63 +398,60 @@ class DiscordBot(commands.Bot):
             ]
             await ctx.send("\n".join(commands_list))
 
+    async def on_guild_join(self, guild):
+        """Handle when bot joins a new server"""
+        logger.info(f"Joined new guild: {guild.name} (ID: {guild.id})")
+        
+        # Try to find a suitable channel to send welcome message
+        welcome_channel = None
+        for channel in guild.text_channels:
+            # Check if bot can send messages in this channel
+            if channel.permissions_for(guild.me).send_messages:
+                welcome_channel = channel
+                break
+        
+        if welcome_channel:
+            welcome_message = [
+                "👋 **Hello! I'm PlutusAI - Your Research Funding Expert!**",
+                "",
+                "I help researchers find and understand funding opportunities by analyzing research papers and their funding sources.",
+                "",
+                "**Quick Start:**",
+                "1️⃣ Use `!search` to look for funding opportunities",
+                "2️⃣ Use `!ask` to ask questions about the results",
+                "3️⃣ Use `!help` to see all available commands",
+                "",
+                "Example: `!search research on RNA sequencing and gene expression analysis`",
+                "",
+                "Need help? Use `!help` to see all available commands!"
+            ]
+            await welcome_channel.send("\n".join(welcome_message))
+
     async def on_ready(self):
         logger.info(f"Logged in as {self.user} (ID: {self.user.id})")
         await self.change_presence(activity=discord.Game(name="!help for commands"))
         
-        # Log guilds the bot is in
-        guilds = self.guilds
-        logger.info(f"Bot is in {len(guilds)} servers:")
-        for guild in guilds:
-            logger.info(f"- {guild.name} (ID: {guild.id})")
-            # Log channels the bot can see in this guild
-            channels = guild.channels
-            logger.info(f"  Channels in {guild.name}:")
-            for channel in channels:
-                logger.info(f"  - {channel.name} (ID: {channel.id})")
-        
         # Generate invite link with correct permissions
         invite_link = discord.utils.oauth_url(
             settings.discord_client_id,
-            permissions=discord.Permissions(permissions=274878221312),
-            scopes=["bot", "applications.commands"]
+            permissions=discord.Permissions(
+                send_messages=True,
+                read_messages=True,
+                read_message_history=True,
+                view_channel=True,
+                use_application_commands=True
+            ),
+            scopes=["bot"]
         )
-        logger.info(f"Invite link: {invite_link}")
+        logger.info(f"Bot invite link: {invite_link}")
+        logger.info(f"API URL: {self.api_url}")
         
-        # Send startup notification to the configured channel
-        try:
-            logger.info(f"Attempting to send startup message to channel ID: {settings.discord_channel_id}")
-            await asyncio.sleep(2)  # Wait longer for connection to stabilize
-            
-            # Try to find the channel in any of the guilds
-            target_channel = None
-            for guild in self.guilds:
-                for channel in guild.channels:
-                    if str(channel.id) == settings.discord_channel_id:
-                        target_channel = channel
-                        break
-                if target_channel:
-                    break
-            
-            if target_channel:
-                logger.info(f"Found channel '{target_channel.name}'")
-                await target_channel.send("🟢 **Bot Restarted**\nThe bot has been restarted and is now online!")
-                logger.info("Startup message sent successfully")
-            else:
-                logger.error(f"Could not find channel {settings.discord_channel_id}")
-                logger.error("Please check:")
-                logger.error("1. The bot is in the correct server")
-                logger.error("2. The channel ID is correct")
-                logger.error("3. The bot has permission to view and send messages in the channel")
-        except discord.errors.Forbidden as e:
-            logger.error(f"Permission error sending to channel {settings.discord_channel_id}: {e}")
-        except discord.errors.NotFound as e:
-            logger.error(f"Channel {settings.discord_channel_id} not found: {e}")
-        except Exception as e:
-            logger.error(f"Failed to send startup notification: {e}")
-            logger.error(f"Channel ID attempted: {settings.discord_channel_id}")
+        # Log connected servers
+        logger.info(f"Connected to {len(self.guilds)} servers:")
+        for guild in self.guilds:
+            logger.info(f"- {guild.name} (ID: {guild.id})")
 
-    async def on_message(self, message: discord.Message):
+    async def on_message(self, message):
         if message.author == self.user:
             return
 
@@ -457,8 +460,8 @@ class DiscordBot(commands.Bot):
             await self.process_commands(message)
             return  # Return early to prevent double processing
 
-        # If message is in the configured channel, process it
-        if str(message.channel.id) == settings.discord_channel_id:
+        # Process messages in any channel the bot has access to
+        if message.guild and message.channel.permissions_for(message.guild.me).send_messages:
             if self.message_callback:
                 await self.message_callback(message.content)
 
