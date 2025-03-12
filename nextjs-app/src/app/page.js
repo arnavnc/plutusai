@@ -32,20 +32,25 @@ export default function Home() {
     });
     
     try {
+      console.log('Sending request with data:', { description, max_results: 15 });
       const response = await fetch(
         'https://plutusai-api.onrender.com/generate_funding_report',
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Accept': 'application/json',
           },
           body: JSON.stringify({ 
             description,
-            max_results: 15  // Adding the required max_results field with default value
+            max_results: 15
           }),
           credentials: 'include',
         }
       );
+
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
       if (!response.ok) {
         const errorText = await response.text();
