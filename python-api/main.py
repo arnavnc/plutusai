@@ -125,7 +125,6 @@ async def search_openalex_for_grants(search_terms: List[str], max_results: int) 
                 "search": term,
                 "per_page": 50,
                 "page": page,
-                "filter": "has_grants:true",  # Only get papers with grants
                 "sort": "cited_by_count:desc"  # Get influential papers first
             }
             

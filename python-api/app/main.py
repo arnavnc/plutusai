@@ -98,6 +98,15 @@ async def generate_funding_report(description: str = Query(...)):
             
             for term in search_terms:
                 print(f"Searching papers for term: {term}")  # Debug log
+                yield {
+                    "event": "message",
+                    "data": json.dumps({
+                        "stage": "paperSearch",
+                        "status": "started",
+                        "term": term
+                    })
+                }
+                
                 try:
                     term_papers = await openalex_service.search_for_grants([term], 10)  # Reduced max_results for testing
                     funders_data.extend(term_papers)
@@ -106,7 +115,17 @@ async def generate_funding_report(description: str = Query(...)):
                 except Exception as e:
                     print(f"Error searching papers for term {term}: {str(e)}")
                     print(traceback.format_exc())
-                    raise
+                    # Continue with other terms instead of raising
+                    yield {
+                        "event": "message",
+                        "data": json.dumps({
+                            "stage": "paperSearch",
+                            "status": "error",
+                            "term": term,
+                            "error": str(e)
+                        })
+                    }
+                    continue
 
                 yield {
                     "event": "message",
@@ -118,14 +137,42 @@ async def generate_funding_report(description: str = Query(...)):
                     })
                 }
 
+            # If we didn't find any papers with grants, return an empty result
+            if not funders_data:
+                print("No papers with grants found")
+                yield {
+                    "event": "message",
+                    "data": json.dumps({
+                        "error": "No papers with grants found for the given search terms."
+                    })
+                }
+                return
+
             # Compile funding data
             print("Starting funding data compilation...")  # Debug log
+            yield {
+                "event": "message",
+                "data": json.dumps({
+                    "stage": "fundingData",
+                    "status": "started"
+                })
+            }
+            
             try:
                 enriched_data = await openalex_service.enrich_funders_data(funders_data)
             except Exception as e:
                 print(f"Error enriching funders data: {str(e)}")
                 print(traceback.format_exc())
-                raise
+                # Continue with unenriched data
+                enriched_data = funders_data
+                yield {
+                    "event": "message",
+                    "data": json.dumps({
+                        "stage": "fundingData",
+                        "status": "error",
+                        "error": str(e)
+                    })
+                }
 
             yield {
                 "event": "message",
@@ -137,12 +184,28 @@ async def generate_funding_report(description: str = Query(...)):
 
             # Generate summary
             print("Generating summary...")  # Debug log
+            yield {
+                "event": "message",
+                "data": json.dumps({
+                    "stage": "summary",
+                    "status": "started"
+                })
+            }
+            
             try:
                 summary = await openai_service.generate_summary(description, enriched_data)
             except Exception as e:
                 print(f"Error generating summary: {str(e)}")
                 print(traceback.format_exc())
-                raise
+                summary = "Unable to generate summary due to an error."
+                yield {
+                    "event": "message",
+                    "data": json.dumps({
+                        "stage": "summary",
+                        "status": "error",
+                        "error": str(e)
+                    })
+                }
 
             yield {
                 "event": "message",

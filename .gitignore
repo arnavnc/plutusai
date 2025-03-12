@@ -8,3 +8,4 @@
 /python-api/app/__pycache__
 /python-api/venv
 /python-api/venv
+*.pyc
