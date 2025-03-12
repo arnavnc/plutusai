@@ -81,14 +81,11 @@ async def generate_funding_report(project: ProjectDescription):
         search_terms = await extract_search_terms(project.description)
         funders_data = await search_openalex_for_grants(search_terms, project.max_results)
         
-        # Enrich with additional funder information
-        enriched_data = await enrich_funders_data(funders_data)
-        
-        summary = await generate_summary(project.description, enriched_data)
+        summary = await generate_summary(project.description, funders_data)
         
         result = {
             "search_terms": search_terms,
-            "funders_data": enriched_data,
+            "funders_data": funders_data,
             "summary": summary
         }
         
