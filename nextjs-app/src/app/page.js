@@ -33,7 +33,7 @@ export default function Home() {
     
     try {
       const eventSource = new EventSource(
-        `http://localhost:8000/generate_funding_report?description=${encodeURIComponent(description)}`,
+        `https://plutusai-api.onrender.com/generate_funding_report?description=${encodeURIComponent(description)}`,
         {
           withCredentials: true,
         }

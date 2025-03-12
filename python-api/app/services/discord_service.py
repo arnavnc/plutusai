@@ -14,7 +14,7 @@ import os
 logger = logging.getLogger(__name__)
 
 # Get the API URL from environment variable or default to localhost
-API_URL = os.getenv('API_URL', 'http://localhost:8000')
+API_URL = os.getenv('API_URL', 'https://plutusai-api.onrender.com')
 
 class DiscordBot(commands.Bot):
     def __init__(self):

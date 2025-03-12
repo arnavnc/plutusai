@@ -7,7 +7,7 @@ user_search_results = {}
 async def search(ctx, *, query):
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.post('http://localhost:8000/search', json={
+            async with session.post('https://plutusai-api.onrender.com/search', json={
                 'query': query
             }) as response:
                 if response.status == 200:
@@ -39,7 +39,7 @@ async def ask(ctx, *, question):
         
         # Send request to ask endpoint
         async with aiohttp.ClientSession() as session:
-            async with session.post('http://localhost:8000/ask', json=payload) as response:
+            async with session.post('https://plutusai-api.onrender.com/ask', json=payload) as response:
                 if response.status == 200:
                     answer_data = await response.json()
                     if 'answer' in answer_data:

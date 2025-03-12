@@ -80,7 +80,7 @@ npm run dev
 
 The application will be available at:
 - Frontend: http://localhost:3000
-- API: http://localhost:8000
+- API: https://plutusai-api.onrender.com
 
 ## 🛠️ Architecture
 
