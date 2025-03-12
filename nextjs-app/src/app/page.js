@@ -39,7 +39,10 @@ export default function Home() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ description }),
+          body: JSON.stringify({ 
+            description,
+            max_results: 15  // Adding the required max_results field with default value
+          }),
           credentials: 'include',
         }
       );
