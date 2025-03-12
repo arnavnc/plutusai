@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import requests
 from typing import List, Dict
-import openai
+from openai import AsyncOpenAI, RateLimitError
 from time import sleep
 import json
 import os
@@ -24,10 +24,8 @@ app.add_middleware(
 )
 
 # OpenAI and OpenAlex configuration
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 OPENALEX_API_URL = "https://api.openalex.org/works"
-
-openai.api_key = OPENAI_API_KEY
 
 @app.get("/")
 async def root():
@@ -85,8 +83,8 @@ async def generate_funding_report(project: ProjectDescription):
 async def extract_search_terms(description: str) -> List[str]:
     """Uses OpenAI to extract relevant search terms with better prompt."""
     try:
-        response = await openai.ChatCompletion.acreate(
-            model="gpt-4o",
+        response = await client.chat.completions.create(
+            model="gpt-4",
             messages=[
                 {"role": "system", "content": """Extract 5-10 highly relevant search terms for academic research funding.
                 Focus on specific technical terms and methodologies that funding agencies typically look for."""},
@@ -94,7 +92,7 @@ async def extract_search_terms(description: str) -> List[str]:
             ]
         )
         return [term.strip() for term in response.choices[0].message.content.split(",")]
-    except openai.error.RateLimitError:
+    except RateLimitError:
         sleep(1)  # Basic rate limit handling
         return await extract_search_terms(description)
 
@@ -148,7 +146,7 @@ async def search_openalex_for_grants(search_terms: List[str], max_results: int) 
                 
     return funders_data
 
-def generate_summary(description: str, funders_data):
+async def generate_summary(description: str, funders_data):
     """Uses OpenAI to summarize findings and recommend next steps."""
     prompt = f"""
     Project Description: {description}
@@ -158,14 +156,14 @@ def generate_summary(description: str, funders_data):
     
     Provide an insightful summary on potential next steps for acquiring funding based on this data.
     """
-    response = openai.ChatCompletion.create(
-        model="gpt-4o",
+    response = await client.chat.completions.create(
+        model="gpt-4",
         messages=[
             {"role": "system", "content": "Summarize funding insights and provide next steps for grant acquisition."},
             {"role": "user", "content": prompt}
         ]
     )
-    return response["choices"][0]["message"]["content"]
+    return response.choices[0].message.content
 
 if __name__ == "__main__":
     import uvicorn
