@@ -101,7 +101,7 @@ async def extract_search_terms(description: str) -> List[str]:
     """Uses OpenAI to extract relevant search terms with better prompt."""
     try:
         response = await client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4o",
             messages=[
                 {"role": "system", "content": """Extract 5-10 highly relevant search terms for academic research funding.
                 Focus on specific technical terms and methodologies that funding agencies typically look for."""},
@@ -174,7 +174,7 @@ async def generate_summary(description: str, funders_data):
     Provide an insightful summary on potential next steps for acquiring funding based on this data.
     """
     response = await client.chat.completions.create(
-        model="gpt-4",
+        model="gpt-4o",
         messages=[
             {"role": "system", "content": "Summarize funding insights and provide next steps for grant acquisition."},
             {"role": "user", "content": prompt}
