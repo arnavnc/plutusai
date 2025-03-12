@@ -5,7 +5,6 @@ import requests
 from typing import List, Dict
 import openai
 from time import sleep
-import redis
 import json
 import os
 
@@ -29,10 +28,6 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENALEX_API_URL = "https://api.openalex.org/works"
 
 openai.api_key = OPENAI_API_KEY
-
-# Redis configuration
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
-redis_client = redis.from_url(REDIS_URL)
 
 @app.get("/")
 async def root():
@@ -68,12 +63,6 @@ class FundingData(BaseModel):
 @app.post("/generate_funding_report")
 async def generate_funding_report(project: ProjectDescription):
     try:
-        # Check cache first
-        cache_key = f"funding_report:{hash(project.description)}"
-        cached_result = redis_client.get(cache_key)
-        if cached_result:
-            return json.loads(cached_result)
-
         search_terms = await extract_search_terms(project.description)
         funders_data = await search_openalex_for_grants(search_terms, project.max_results)
         
@@ -87,9 +76,6 @@ async def generate_funding_report(project: ProjectDescription):
             "funders_data": enriched_data,
             "summary": summary
         }
-        
-        # Cache the result
-        redis_client.setex(cache_key, 3600, json.dumps(result))  # Cache for 1 hour
         
         return result
 
