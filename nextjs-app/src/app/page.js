@@ -48,7 +48,14 @@ export default function Home() {
       );
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error('Server error response:', errorText);
+        try {
+          const errorJson = JSON.parse(errorText);
+          throw new Error(errorJson.detail || `HTTP error! status: ${response.status}`);
+        } catch (e) {
+          throw new Error(`HTTP error! status: ${response.status}. Response: ${errorText}`);
+        }
       }
 
       const data = await response.json();
