@@ -24,7 +24,12 @@ app.add_middleware(
 )
 
 # OpenAI and OpenAlex configuration
-client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+if not OPENAI_API_KEY:
+    raise ValueError("OPENAI_API_KEY environment variable is not set")
+print(f"API Key starts with: {OPENAI_API_KEY[:10]}...")  # Debug print - only show first few chars
+
+client = AsyncOpenAI()  # Will automatically use OPENAI_API_KEY from environment
 OPENALEX_API_URL = "https://api.openalex.org/works"
 
 @app.get("/")
@@ -44,7 +49,19 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
-    return {"status": "healthy"}
+    try:
+        # Test OpenAI connection
+        api_key_status = "valid" if OPENAI_API_KEY else "missing"
+        return {
+            "status": "healthy",
+            "openai_api_key": api_key_status,
+            "key_starts_with": OPENAI_API_KEY[:10] if OPENAI_API_KEY else None
+        }
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "error": str(e)
+        }
 
 class ProjectDescription(BaseModel):
     description: str
